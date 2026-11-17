@@ -63,9 +63,19 @@ def run_game(nick, ram, log, done):
         copy_kote_mod(log)
         opts = {"username": nick, "uuid": str(uuid.uuid3(uuid.NAMESPACE_DNS, "OfflinePlayer:" + nick)),
                 "token": "", "jvmArguments": [f"-Xmx{ram}G", f"-Xms{max(1, ram // 2)}G"]}
+        try:
+            rt = mll.runtime.get_version_runtime_information(vid, GAME_DIR)
+            if rt:
+                log("Ставлю Java для игры (в первый раз долго)...")
+                mll.runtime.install_jvm_runtime(rt["name"], GAME_DIR, callback=cb)
+                exe = mll.runtime.get_executable_path(rt["name"], GAME_DIR)
+                if exe:
+                    opts["executablePath"] = exe
+        except Exception as e:
+            log(f"Java: не вышло поставить свою ({e}), пробую системную")
         cmd = mll.command.get_minecraft_command(vid, GAME_DIR, opts)
         log("Запуск игры...")
-        subprocess.Popen(cmd, cwd=GAME_DIR)
+        subprocess.Popen(cmd, cwd=GAME_DIR, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except Exception as e:
         log(f"Ошибка: {e}")
     finally:

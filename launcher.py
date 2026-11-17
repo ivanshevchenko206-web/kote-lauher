@@ -55,8 +55,19 @@ def run_game(nick, ram, log, done):
     try:
         os.makedirs(GAME_DIR, exist_ok=True)
         cb = {"setStatus": lambda s: log(s), "setProgress": lambda p: None, "setMax": lambda m: None}
+        # Java нужна уже для установки Fabric, поэтому ставим её первой
+        java_exe = None
+        try:
+            log("Ставлю Java 21 (в первый раз долго)...")
+            mll.runtime.install_jvm_runtime("java-runtime-delta", GAME_DIR, callback=cb)
+            java_exe = mll.runtime.get_executable_path("java-runtime-delta", GAME_DIR)
+        except Exception as e:
+            log(f"Java: не вышло ({e}), пробую системную")
         log(f"Ставлю Fabric для {MC_VERSION}...")
-        mll.fabric.install_fabric(MC_VERSION, GAME_DIR, callback=cb)
+        if java_exe:
+            mll.fabric.install_fabric(MC_VERSION, GAME_DIR, callback=cb, java=java_exe)
+        else:
+            mll.fabric.install_fabric(MC_VERSION, GAME_DIR, callback=cb)
         vid = next(v["id"] for v in mll.utils.get_installed_versions(GAME_DIR)
                    if "fabric-loader" in v["id"] and v["id"].endswith(MC_VERSION))
         download_opt_mods(log)
@@ -77,7 +88,9 @@ def run_game(nick, ram, log, done):
         log("Запуск игры...")
         subprocess.Popen(cmd, cwd=GAME_DIR, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except Exception as e:
-        log(f"Ошибка: {e}")
+        import traceback
+        log(f"Ошибка: {e!r}")
+        log(traceback.format_exc()[-600:])
     finally:
         done()
 
